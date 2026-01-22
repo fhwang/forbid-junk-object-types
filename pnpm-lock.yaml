@@ -23,6 +23,9 @@ importers:
       eslint:
         specifier: ^9.39.2
         version: 9.39.2
+      globals:
+        specifier: ^17.0.0
+        version: 17.0.0
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
@@ -474,6 +477,10 @@ packages:
 
   globals@14.0.0:
     resolution: {integrity: sha512-oahGvuMGQlPw/ivIYBjVSrWAfWLBeku5tpPE2fOPLi+WHffIWbuh2tCjhyQhTBPMf5E9jDEH4FOmTYgYwbKwtQ==}
+    engines: {node: '>=18'}
+
+  globals@17.0.0:
+    resolution: {integrity: sha512-gv5BeD2EssA793rlFWVPMMCqefTlpusw6/2TbAVMy0FzcG8wKJn4O+NqJ4+XWmmwrayJgw5TzrmWjFgmz1XPqw==}
     engines: {node: '>=18'}
 
   has-flag@4.0.0:
@@ -1089,6 +1096,8 @@ snapshots:
       is-glob: 4.0.3
 
   globals@14.0.0: {}
+
+  globals@17.0.0: {}
 
   has-flag@4.0.0: {}
 

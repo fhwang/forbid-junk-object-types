@@ -19,13 +19,22 @@ export interface TypeUsage {
   line: number;
 }
 
-export interface Violation {
-  typeName: string;
-  filePath: string;
-  line: number;
-  column: number;
-  usedByFunction: string;
-}
+export type Violation =
+  | {
+      kind: 'single-use-named';
+      typeName: string;
+      usedByFunction: string;
+      filePath: string;
+      line: number;
+      column: number;
+    }
+  | {
+      kind: 'inline-object';
+      context: string;
+      filePath: string;
+      line: number;
+      column: number;
+    };
 
 export interface SuppressionEntry {
   reason?: string;

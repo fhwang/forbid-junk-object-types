@@ -100,4 +100,26 @@ describe('analyzer', () => {
     expect(result.filesAnalyzed).toBeGreaterThan(1);
     expect(result.totalTypesAnalyzed).toBeGreaterThan(0);
   });
+
+  it('detects inline object violations', async () => {
+    const result = await analyzeCodebase({
+      targetDir: fixturesDir,
+      specificFiles: [path.join(fixturesDir, 'src/inline-object-violations.ts')],
+    });
+
+    const inlineViolations = result.violations.filter(v => v.kind === 'inline-object');
+    expect(inlineViolations.length).toBeGreaterThan(5);
+  });
+
+  it('combines named and inline violations', async () => {
+    const result = await analyzeCodebase({
+      targetDir: fixturesDir,
+    });
+
+    const namedViolations = result.violations.filter(v => v.kind === 'single-use-named');
+    const inlineViolations = result.violations.filter(v => v.kind === 'inline-object');
+
+    expect(namedViolations.length).toBeGreaterThan(0);
+    expect(inlineViolations.length).toBeGreaterThan(0);
+  });
 });

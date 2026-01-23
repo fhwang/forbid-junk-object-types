@@ -2,7 +2,7 @@ import * as ts from 'typescript';
 import * as path from 'path';
 import * as fs from 'fs';
 import { TypeDefinition, TypeUsage, Violation, AnalyzerOptions, AnalysisResult } from './types.js';
-import { collectTypeDefinitions, collectTypeUsages, extendsOtherType } from './parser.js';
+import { collectTypeDefinitions, collectTypeUsages, extendsOtherType, collectInlineObjectViolations } from './parser.js';
 
 function getAllTsFiles(dir: string, fileList: string[] = []): string[] {
   const files = fs.readdirSync(dir);
@@ -86,18 +86,25 @@ function getCompilerOptions(): ts.CompilerOptions {
 function analyzeSourceFiles(
   program: ts.Program,
   filesToAnalyze: string[]
-): { typeDefinitions: Map<string, TypeDefinition>; typeUsages: Map<string, TypeUsage[]> } {
+): {
+  typeDefinitions: Map<string, TypeDefinition>;
+  typeUsages: Map<string, TypeUsage[]>;
+  inlineViolations: Violation[];
+} {
   const typeDefinitions = new Map<string, TypeDefinition>();
   const typeUsages = new Map<string, TypeUsage[]>();
+  const inlineViolations: Violation[] = [];
 
   for (const sourceFile of program.getSourceFiles()) {
     if (!sourceFile.isDeclarationFile && filesToAnalyze.includes(sourceFile.fileName)) {
       collectTypeDefinitions(sourceFile, typeDefinitions);
       collectTypeUsages(sourceFile, typeUsages);
+      const inline = collectInlineObjectViolations(sourceFile);
+      inlineViolations.push(...inline);
     }
   }
 
-  return { typeDefinitions, typeUsages };
+  return { typeDefinitions, typeUsages, inlineViolations };
 }
 
 function findViolations(
@@ -130,12 +137,15 @@ export async function analyzeCodebase(options: AnalyzerOptions): Promise<Analysi
   const compilerOptions = getCompilerOptions();
   const program = ts.createProgram(filesToAnalyze, compilerOptions);
 
-  const { typeDefinitions, typeUsages } = analyzeSourceFiles(program, filesToAnalyze);
-  const violations = findViolations(typeDefinitions, typeUsages);
+  const { typeDefinitions, typeUsages, inlineViolations } = analyzeSourceFiles(program, filesToAnalyze);
+  const namedViolations = findViolations(typeDefinitions, typeUsages);
+
+  // Combine both violation types
+  const allViolations = [...namedViolations, ...inlineViolations];
 
   return {
-    violations,
-    totalTypesAnalyzed: typeDefinitions.size,
+    violations: allViolations,
+    totalTypesAnalyzed: typeDefinitions.size + inlineViolations.length,
     filesAnalyzed: filesToAnalyze.length,
   };
 }

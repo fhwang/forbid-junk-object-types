@@ -137,3 +137,12 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Claude Code settings
+.claude/settings.local.json
+
+# Test build artifacts
+test/**/*.js
+test/**/*.js.map
+test/**/*.d.ts
+test/**/*.d.ts.map

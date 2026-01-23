@@ -1,0 +1,71 @@
+{
+  "name": "check-single-use-types",
+  "version": "1.0.0",
+  "description": "TypeScript linter that detects object types and interfaces used by only a single function",
+  "main": "./dist/index.js",
+  "type": "module",
+  "bin": {
+    "check-single-use-types": "./dist/index.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "check-self": "pnpm run build && node dist/index.js --target-dir .",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "prepublishOnly": "pnpm run clean && pnpm run build && pnpm run test:run"
+  },
+  "keywords": [
+    "typescript",
+    "linter",
+    "code-quality",
+    "type-checker",
+    "single-use-types",
+    "domain-modeling",
+    "cli"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fhwang/check-single-use-types.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fhwang/check-single-use-types/issues"
+  },
+  "homepage": "https://github.com/fhwang/check-single-use-types#readme",
+  "packageManager": "pnpm@10.19.0",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/node": "^25.0.10",
+    "@typescript-eslint/eslint-plugin": "^8.53.1",
+    "@typescript-eslint/parser": "^8.53.1",
+    "eslint": "^9.39.2",
+    "globals": "^17.0.0",
+    "tsx": "^4.21.0",
+    "typescript-eslint": "^8.53.1",
+    "vitest": "^2.1.8"
+  }
+}

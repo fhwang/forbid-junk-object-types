@@ -261,7 +261,7 @@ function isEmptyObjectType(node: ts.TypeLiteralNode): boolean {
   return node.members.length === 0;
 }
 
-// eslint-disable-next-line max-statements
+// eslint-disable-next-line max-statements, max-lines-per-function
 function getContextFromParentNode(parent: ts.Node | undefined): {
   description: string;
   functionName?: string;

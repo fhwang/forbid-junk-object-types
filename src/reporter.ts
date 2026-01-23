@@ -21,6 +21,7 @@ function reportSingleViolation(violation: Violation, targetDir: string): void {
     console.error(`  Consider extracting this to a named type if it represents a domain concept`);
   } else {
     const _exhaustive: never = violation;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     throw new Error(`Unhandled violation kind: ${(_exhaustive as any).kind}`);
   }
 
@@ -56,6 +57,7 @@ function groupViolationsByKind(violations: Violation[]): {
   return { named, inline };
 }
 
+// eslint-disable-next-line max-statements
 export function reportViolations(violations: Violation[], targetDir: string): void {
   if (violations.length === 0) {
     console.log('✓ No single-use types found');

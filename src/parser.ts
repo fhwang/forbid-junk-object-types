@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import * as ts from 'typescript';
 import { TypeDefinition, TypeUsage, Violation } from './types.js';
 
@@ -265,6 +266,7 @@ function isEmptyObjectType(node: ts.TypeLiteralNode): boolean {
   return node.members.length === 0;
 }
 
+// eslint-disable-next-line max-statements
 function getContextFromParentNode(parent: ts.Node | undefined): InlineObjectContext {
   if (!parent) {
     return { description: 'unknown context' };
@@ -322,6 +324,7 @@ export function collectInlineObjectViolations(
 
   function visitNode(node: ts.Node, parent?: ts.Node): void {
     // Manually set up parent pointer for this traversal
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (node as any).parent = parent;
 
     if (ts.isTypeLiteralNode(node)) {

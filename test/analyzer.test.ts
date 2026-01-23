@@ -16,7 +16,8 @@ describe('analyzer', () => {
     });
 
     expect(result.violations.length).toBeGreaterThan(0);
-    const typeNames = result.violations.map(v => v.typeName);
+    const namedViolations = result.violations.filter(v => v.kind === 'single-use-named');
+    const typeNames = namedViolations.map(v => v.typeName);
     expect(typeNames).toContain('SingleUseInterface');
     expect(typeNames).toContain('SingleUseType');
     expect(typeNames).toContain('BadOptions');
@@ -28,7 +29,8 @@ describe('analyzer', () => {
       specificFiles: [path.join(fixturesDir, 'src/valid-types.ts')],
     });
 
-    const typeNames = result.violations.map(v => v.typeName);
+    const namedViolations = result.violations.filter(v => v.kind === 'single-use-named');
+    const typeNames = namedViolations.map(v => v.typeName);
     expect(typeNames).not.toContain('MultiUseType');
   });
 
@@ -38,7 +40,8 @@ describe('analyzer', () => {
       specificFiles: [path.join(fixturesDir, 'src/valid-types.ts')],
     });
 
-    const typeNames = result.violations.map(v => v.typeName);
+    const namedViolations = result.violations.filter(v => v.kind === 'single-use-named');
+    const typeNames = namedViolations.map(v => v.typeName);
     expect(typeNames).not.toContain('PublicAPI');
   });
 
@@ -48,7 +51,8 @@ describe('analyzer', () => {
       specificFiles: [path.join(fixturesDir, 'src/valid-types.ts')],
     });
 
-    const typeNames = result.violations.map(v => v.typeName);
+    const namedViolations = result.violations.filter(v => v.kind === 'single-use-named');
+    const typeNames = namedViolations.map(v => v.typeName);
     expect(typeNames).not.toContain('ExtendedInterface');
   });
 
@@ -58,7 +62,8 @@ describe('analyzer', () => {
       specificFiles: [path.join(fixturesDir, 'src/valid-types.ts')],
     });
 
-    const typeNames = result.violations.map(v => v.typeName);
+    const namedViolations = result.violations.filter(v => v.kind === 'single-use-named');
+    const typeNames = namedViolations.map(v => v.typeName);
     // ComponentProps ends with Props, so should be allowed
     expect(typeNames).not.toContain('ComponentProps');
   });
@@ -69,7 +74,8 @@ describe('analyzer', () => {
       specificFiles: [path.join(fixturesDir, 'src/mixed-types.ts')],
     });
 
-    const typeNames = result.violations.map(v => v.typeName);
+    const namedViolations = result.violations.filter(v => v.kind === 'single-use-named');
+    const typeNames = namedViolations.map(v => v.typeName);
 
     // Should flag these
     expect(typeNames).toContain('BadConfig');
@@ -85,7 +91,8 @@ describe('analyzer', () => {
       specificFiles: [path.join(fixturesDir, 'src/single-use-violations.ts')],
     });
 
-    const violation = result.violations.find(v => v.typeName === 'SingleUseInterface');
+    const namedViolations = result.violations.filter(v => v.kind === 'single-use-named');
+    const violation = namedViolations.find(v => v.typeName === 'SingleUseInterface');
     expect(violation).toBeDefined();
     expect(violation?.filePath).toContain('single-use-violations.ts');
     expect(violation?.line).toBeGreaterThan(0);

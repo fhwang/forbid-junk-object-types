@@ -146,3 +146,6 @@ test/**/*.js
 test/**/*.js.map
 test/**/*.d.ts
 test/**/*.d.ts.map
+
+# Test suppression artifacts
+test/**/single-use-types-suppressions.json

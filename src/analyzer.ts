@@ -112,6 +112,7 @@ function findViolations(
     if (isSingleUseType(definition, usages) && !hasLegitimateReason(definition)) {
       const functionName = usages.find(u => u.functionName)?.functionName || 'unknown';
       violations.push({
+        kind: 'single-use-named',
         typeName: definition.name,
         filePath: definition.filePath,
         line: definition.line,

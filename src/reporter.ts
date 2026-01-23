@@ -1,11 +1,26 @@
 import * as path from 'path';
 import { Violation } from './types.js';
 
+function isSingleUseNamedViolation(v: Violation): v is Extract<Violation, { kind: 'single-use-named' }> {
+  return v.kind === 'single-use-named';
+}
+
+function isInlineObjectViolation(v: Violation): v is Extract<Violation, { kind: 'inline-object' }> {
+  return v.kind === 'inline-object';
+}
+
 function reportSingleViolation(violation: Violation, targetDir: string): void {
   const relativePath = path.relative(targetDir, violation.filePath);
   console.error(`${relativePath}:${violation.line}:${violation.column}`);
-  console.error(`  ${violation.typeName} is only used by function '${violation.usedByFunction}'`);
-  console.error(`  Consider inlining this type or creating a domain concept instead`);
+
+  if (isSingleUseNamedViolation(violation)) {
+    console.error(`  ${violation.typeName} is only used by function '${violation.usedByFunction}'`);
+    console.error(`  Consider inlining this type or creating a domain concept instead`);
+  } else if (isInlineObjectViolation(violation)) {
+    console.error(`  Inline object type in ${violation.context}`);
+    console.error(`  Consider extracting this to a named type if it represents a domain concept`);
+  }
+
   console.error('');
 }
 
@@ -21,7 +36,7 @@ function reportGuidance(): void {
 }
 
 export function reportViolations(violations: Violation[], targetDir: string): void {
-  console.error(`\nFound ${violations.length} single-use type violation(s):\n`);
+  console.error(`\nFound ${violations.length} type violation(s):\n`);
 
   for (const violation of violations) {
     reportSingleViolation(violation, targetDir);

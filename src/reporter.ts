@@ -19,6 +19,9 @@ function reportSingleViolation(violation: Violation, targetDir: string): void {
   } else if (isInlineObjectViolation(violation)) {
     console.error(`  Inline object type in ${violation.context}`);
     console.error(`  Consider extracting this to a named type if it represents a domain concept`);
+  } else {
+    const _exhaustive: never = violation;
+    throw new Error(`Unhandled violation kind: ${(_exhaustive as any).kind}`);
   }
 
   console.error('');

@@ -19,22 +19,29 @@ export interface TypeUsage {
   line: number;
 }
 
-export type Violation =
-  | {
-      kind: 'single-use-named';
-      typeName: string;
-      usedByFunction: string;
-      filePath: string;
-      line: number;
-      column: number;
-    }
-  | {
-      kind: 'inline-object';
-      context: string;
-      filePath: string;
-      line: number;
-      column: number;
-    };
+export interface SingleUseNamedViolation {
+  kind: 'single-use-named';
+  typeName: string;
+  usedByFunction: string;
+  filePath: string;
+  line: number;
+  column: number;
+}
+
+export interface InlineObjectViolation {
+  kind: 'inline-object';
+  context: string;
+  filePath: string;
+  line: number;
+  column: number;
+}
+
+export type Violation = SingleUseNamedViolation | InlineObjectViolation;
+
+export interface SourceLocation {
+  line: number;
+  column: number;
+}
 
 export interface SuppressionEntry {
   reason?: string;

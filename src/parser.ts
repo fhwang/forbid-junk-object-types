@@ -1,8 +1,8 @@
 /* eslint-disable max-lines */
 import * as ts from 'typescript';
-import { TypeDefinition, TypeUsage, Violation } from './types.js';
+import { TypeDefinition, TypeUsage, InlineObjectViolation, SourceLocation } from './types.js';
 
-export function getLineAndColumn(node: ts.Node, sourceFile: ts.SourceFile): { line: number; column: number } {
+export function getLineAndColumn(node: ts.Node, sourceFile: ts.SourceFile): SourceLocation {
   const { line, character } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
   return { line: line + 1, column: character + 1 };
 }
@@ -257,17 +257,15 @@ export function collectTypeUsages(
   visit(sourceFile);
 }
 
-interface InlineObjectContext {
-  description: string;
-  functionName?: string;
-}
-
 function isEmptyObjectType(node: ts.TypeLiteralNode): boolean {
   return node.members.length === 0;
 }
 
 // eslint-disable-next-line max-statements
-function getContextFromParentNode(parent: ts.Node | undefined): InlineObjectContext {
+function getContextFromParentNode(parent: ts.Node | undefined): {
+  description: string;
+  functionName?: string;
+} {
   if (!parent) {
     return { description: 'unknown context' };
   }
@@ -319,8 +317,8 @@ function getContextFromParentNode(parent: ts.Node | undefined): InlineObjectCont
 
 export function collectInlineObjectViolations(
   sourceFile: ts.SourceFile
-): Array<Extract<Violation, { kind: 'inline-object' }>> {
-  const violations: Array<Extract<Violation, { kind: 'inline-object' }>> = [];
+): InlineObjectViolation[] {
+  const violations: InlineObjectViolation[] = [];
 
   function visitNode(node: ts.Node, parent?: ts.Node): void {
     // Manually set up parent pointer for this traversal

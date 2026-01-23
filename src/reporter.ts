@@ -1,11 +1,11 @@
 import * as path from 'path';
-import { Violation } from './types.js';
+import { Violation, SingleUseNamedViolation, InlineObjectViolation } from './types.js';
 
-function isSingleUseNamedViolation(v: Violation): v is Extract<Violation, { kind: 'single-use-named' }> {
+function isSingleUseNamedViolation(v: Violation): v is SingleUseNamedViolation {
   return v.kind === 'single-use-named';
 }
 
-function isInlineObjectViolation(v: Violation): v is Extract<Violation, { kind: 'inline-object' }> {
+function isInlineObjectViolation(v: Violation): v is InlineObjectViolation {
   return v.kind === 'inline-object';
 }
 
@@ -40,11 +40,11 @@ function reportGuidance(): void {
 }
 
 function groupViolationsByKind(violations: Violation[]): {
-  named: Array<Extract<Violation, { kind: 'single-use-named' }>>;
-  inline: Array<Extract<Violation, { kind: 'inline-object' }>>;
+  named: SingleUseNamedViolation[];
+  inline: InlineObjectViolation[];
 } {
-  const named: Array<Extract<Violation, { kind: 'single-use-named' }>> = [];
-  const inline: Array<Extract<Violation, { kind: 'inline-object' }>> = [];
+  const named: SingleUseNamedViolation[] = [];
+  const inline: InlineObjectViolation[] = [];
 
   for (const v of violations) {
     if (v.kind === 'single-use-named') {

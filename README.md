@@ -91,18 +91,39 @@ Suppressions are stored in `<target-dir>/single-use-types-suppressions.json`:
   "src/apollo/client.ts": {
     "MapsResultSetMergeOptions": {
       "reason": "Apollo Client type policy requires this shape"
+    },
+    "23:15": {
+      "reason": "Legacy API requires inline type",
+      "kind": "inline-object"
     }
   }
 }
 ```
 
+- Named types are keyed by type name
+- Inline objects are keyed by `line:column` location
+
 ## What Gets Flagged
 
-The tool flags object types/interfaces that:
+The tool flags:
+
+### Named Single-Use Types
+Object types/interfaces that:
 - Are only used by a single function (in signature or body)
 - Are not exported (public API types are allowed)
 - Don't extend/implement other types (polymorphism is allowed)
 - Don't end with `*Props` (React component props pattern - temporary exception)
+
+### Inline Object Types
+All inline anonymous object types such as:
+- Function parameters: `function foo(opts: { a: number })`
+- Return types: `function bar(): { success: boolean }`
+- Variable declarations: `const x: { id: string } = ...`
+- Nested in type definitions: `type User = { profile: { name: string } }`
+- Type assertions: `data as { value: number }`
+- Index signatures: `const map: { [key: string]: number } = {}`
+
+**Exception:** Empty object type `{}` is allowed (TypeScript idiom for non-null object constraint).
 
 ## False Positives
 
@@ -168,19 +189,24 @@ Single-use types often indicate missing domain modeling. Instead of creating gen
 ### Examples
 
 ```typescript
-// ✗ Generic wrapper
+// ✗ Named single-use type
 interface SearchOptions {
-  query: string
-  page: number
+  query: string;
+  page: number;
 }
+function search(opts: SearchOptions) { ... }
+
+// ✗ Inline object type
+function search(opts: { query: string; page: number }) { ... }
 
 // ✓ Domain concept
 interface SearchQuery {
-  query: string
-  page: number
+  query: string;
+  page: number;
 }
+function search(query: SearchQuery) { ... }
 
-// ✓ Or inline if truly one-off
+// ✓ Or inline if truly simple
 function search(query: string, page: number) { ... }
 ```
 

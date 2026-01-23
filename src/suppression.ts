@@ -34,7 +34,13 @@ export function isSuppressed(
     return false;
   }
 
-  return violation.typeName in fileSuppressions;
+  if (violation.kind === 'single-use-named') {
+    return violation.typeName in fileSuppressions;
+  } else {
+    // Check for line:column key
+    const locationKey = `${violation.line}:${violation.column}`;
+    return locationKey in fileSuppressions;
+  }
 }
 
 export function generateSuppressionsForAll(
@@ -50,9 +56,16 @@ export function generateSuppressionsForAll(
       suppressions[relativePath] = {};
     }
 
-    suppressions[relativePath][violation.typeName] = {
-      reason: "Auto-suppressed - add explanation here",
-    };
+    if (violation.kind === 'single-use-named') {
+      suppressions[relativePath][violation.typeName] = {
+        reason: "Auto-suppressed - add explanation here",
+      };
+    } else {
+      const locationKey = `${violation.line}:${violation.column}`;
+      suppressions[relativePath][locationKey] = {
+        reason: "Auto-suppressed - add explanation here",
+      };
+    }
   }
 
   return suppressions;

@@ -74,6 +74,7 @@ describe('suppression', () => {
       };
 
       const violation: Violation = {
+        kind: 'single-use-named',
         typeName: 'BadType',
         filePath: path.join(tempDir, 'src/test.ts'),
         line: 10,
@@ -88,6 +89,7 @@ describe('suppression', () => {
       const suppressions: SuppressionFile = {};
 
       const violation: Violation = {
+        kind: 'single-use-named',
         typeName: 'BadType',
         filePath: path.join(tempDir, 'src/test.ts'),
         line: 10,
@@ -106,6 +108,7 @@ describe('suppression', () => {
       };
 
       const violation: Violation = {
+        kind: 'single-use-named',
         typeName: 'BadType',
         filePath: path.join(tempDir, 'src/nested/test.ts'),
         line: 10,
@@ -115,12 +118,49 @@ describe('suppression', () => {
 
       expect(isSuppressed(violation, suppressions, tempDir)).toBe(true);
     });
+
+    it('returns true for suppressed inline-object violations', () => {
+      const suppressions: SuppressionFile = {
+        'src/test.ts': {
+          '10:5': { reason: 'Suppressed inline object' },
+        },
+      };
+
+      const violation: Violation = {
+        kind: 'inline-object',
+        context: 'parameter of function foo',
+        filePath: path.join(tempDir, 'src/test.ts'),
+        line: 10,
+        column: 5,
+      };
+
+      expect(isSuppressed(violation, suppressions, tempDir)).toBe(true);
+    });
+
+    it('returns false for non-suppressed inline-object violations', () => {
+      const suppressions: SuppressionFile = {
+        'src/test.ts': {
+          '10:5': { reason: 'Different location' },
+        },
+      };
+
+      const violation: Violation = {
+        kind: 'inline-object',
+        context: 'parameter of function bar',
+        filePath: path.join(tempDir, 'src/test.ts'),
+        line: 15,
+        column: 3,
+      };
+
+      expect(isSuppressed(violation, suppressions, tempDir)).toBe(false);
+    });
   });
 
   describe('generateSuppressionsForAll', () => {
     it('generates suppressions for all violations', () => {
       const violations: Violation[] = [
         {
+          kind: 'single-use-named',
           typeName: 'Type1',
           filePath: path.join(tempDir, 'src/file1.ts'),
           line: 1,
@@ -128,6 +168,7 @@ describe('suppression', () => {
           usedByFunction: 'fn1',
         },
         {
+          kind: 'single-use-named',
           typeName: 'Type2',
           filePath: path.join(tempDir, 'src/file2.ts'),
           line: 2,
@@ -141,6 +182,56 @@ describe('suppression', () => {
       expect(suppressions['src/file1.ts']!['Type1']).toBeDefined();
       expect(suppressions['src/file2.ts']!['Type2']).toBeDefined();
       expect(suppressions['src/file1.ts']!['Type1']!.reason).toContain('Auto-suppressed');
+    });
+
+    it('generates suppressions for inline-object violations', () => {
+      const violations: Violation[] = [
+        {
+          kind: 'inline-object',
+          context: 'parameter of function foo',
+          filePath: path.join(tempDir, 'src/file1.ts'),
+          line: 10,
+          column: 5,
+        },
+        {
+          kind: 'inline-object',
+          context: 'return type of function bar',
+          filePath: path.join(tempDir, 'src/file2.ts'),
+          line: 20,
+          column: 15,
+        },
+      ];
+
+      const suppressions = generateSuppressionsForAll(violations, tempDir);
+
+      expect(suppressions['src/file1.ts']!['10:5']).toBeDefined();
+      expect(suppressions['src/file2.ts']!['20:15']).toBeDefined();
+      expect(suppressions['src/file1.ts']!['10:5']!.reason).toContain('Auto-suppressed');
+    });
+
+    it('generates suppressions for mixed violation types', () => {
+      const violations: Violation[] = [
+        {
+          kind: 'single-use-named',
+          typeName: 'Type1',
+          filePath: path.join(tempDir, 'src/file1.ts'),
+          line: 1,
+          column: 1,
+          usedByFunction: 'fn1',
+        },
+        {
+          kind: 'inline-object',
+          context: 'parameter of function foo',
+          filePath: path.join(tempDir, 'src/file1.ts'),
+          line: 10,
+          column: 5,
+        },
+      ];
+
+      const suppressions = generateSuppressionsForAll(violations, tempDir);
+
+      expect(suppressions['src/file1.ts']!['Type1']).toBeDefined();
+      expect(suppressions['src/file1.ts']!['10:5']).toBeDefined();
     });
   });
 

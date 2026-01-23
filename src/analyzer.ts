@@ -84,14 +84,16 @@ function getCompilerOptions(): ts.CompilerOptions {
   };
 }
 
-function analyzeSourceFiles(
-  program: ts.Program,
-  filesToAnalyze: string[]
-): {
+interface SourceFileAnalysis {
   typeDefinitions: Map<string, TypeDefinition>;
   typeUsages: Map<string, TypeUsage[]>;
   inlineViolations: Violation[];
-} {
+}
+
+function analyzeSourceFiles(
+  program: ts.Program,
+  filesToAnalyze: string[]
+): SourceFileAnalysis {
   const typeDefinitions = new Map<string, TypeDefinition>();
   const typeUsages = new Map<string, TypeUsage[]>();
   const inlineViolations: Violation[] = [];

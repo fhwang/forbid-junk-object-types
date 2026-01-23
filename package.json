@@ -1,6 +1,6 @@
 {
   "name": "check-single-use-types",
-  "version": "2.0.0",
+  "version": "1.0.0",
   "description": "TypeScript linter that detects object types and interfaces used by only a single function",
   "main": "./dist/index.js",
   "type": "module",

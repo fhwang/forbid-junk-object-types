@@ -14,26 +14,7 @@ interface ParsedArgs {
   help: boolean;
 }
 
-interface FileCollectionResult {
-  files: string[];
-  nextIndex: number;
-}
-
-interface ArgumentHandlerContext {
-  args: string[];
-  index: number;
-  result: ParsedArgs;
-}
-
-interface SuppressionHandlerContext {
-  unsuppressedViolations: Awaited<ReturnType<typeof analyzeCodebase>>['violations'];
-  suppressions: ReturnType<typeof loadSuppressions>;
-  suppressionPath: string;
-  targetDir: string;
-  result: Awaited<ReturnType<typeof analyzeCodebase>>;
-}
-
-function collectFiles(args: string[], startIndex: number): FileCollectionResult {
+function collectFiles(args: string[], startIndex: number): { files: string[]; nextIndex: number } {
   const files: string[] = [];
   let i = startIndex;
   while (i < args.length) {
@@ -45,7 +26,7 @@ function collectFiles(args: string[], startIndex: number): FileCollectionResult 
   return { files, nextIndex: i - 1 };
 }
 
-function handleArgument(arg: string, context: ArgumentHandlerContext): number {
+function handleArgument(arg: string, context: { args: string[]; index: number; result: ParsedArgs }): number {
   switch (arg) {
     case '--target-dir': {
       const targetDirArg = context.args[context.index + 1];
@@ -144,7 +125,13 @@ function determineFilesToCheck(args: ParsedArgs, targetDir: string): string[] | 
   return undefined;
 }
 
-function handleSuppressAll(context: SuppressionHandlerContext): void {
+function handleSuppressAll(context: {
+  unsuppressedViolations: Awaited<ReturnType<typeof analyzeCodebase>>['violations'];
+  suppressions: ReturnType<typeof loadSuppressions>;
+  suppressionPath: string;
+  targetDir: string;
+  result: Awaited<ReturnType<typeof analyzeCodebase>>;
+}): void {
   const newSuppressions = generateSuppressionsForAll(context.unsuppressedViolations, context.targetDir);
   const mergedSuppressions = mergeSuppressions(context.suppressions, newSuppressions);
   saveSuppressions(mergedSuppressions, context.suppressionPath);

@@ -7,10 +7,6 @@ interface NodeContext {
   functionName?: string;
 }
 
-interface NodeWithParent extends ts.Node {
-  parent?: ts.Node;
-}
-
 function isEmptyObjectType(node: ts.TypeLiteralNode): boolean {
   return node.members.length === 0;
 }
@@ -66,9 +62,6 @@ export function collectInlineObjectViolations(
   const violations: InlineObjectViolation[] = [];
 
   function visitNode(node: ts.Node, parent?: ts.Node): void {
-    const nodeWithParent = node as NodeWithParent;
-    nodeWithParent.parent = parent;
-
     if (ts.isTypeLiteralNode(node)) {
       if (!isEmptyObjectType(node)) {
         const { line, column } = getLineAndColumn(node, sourceFile);

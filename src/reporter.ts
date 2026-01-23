@@ -38,10 +38,12 @@ function reportGuidance(): void {
   console.error('  ✓ Or inline if truly one-off: (query: string, page: number) => ...');
 }
 
-function groupViolationsByKind(violations: Violation[]): {
+interface GroupedViolations {
   named: SingleUseNamedViolation[];
   inline: InlineObjectViolation[];
-} {
+}
+
+function groupViolationsByKind(violations: Violation[]): GroupedViolations {
   const named: SingleUseNamedViolation[] = [];
   const inline: InlineObjectViolation[] = [];
 

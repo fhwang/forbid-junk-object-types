@@ -1,6 +1,5 @@
-/* eslint-disable max-lines */
 import * as ts from 'typescript';
-import { TypeDefinition, TypeUsage, InlineObjectViolation, SourceLocation } from './types.js';
+import { TypeDefinition, TypeUsage, SourceLocation } from './types.js';
 
 export function getLineAndColumn(node: ts.Node, sourceFile: ts.SourceFile): SourceLocation {
   const { line, character } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
@@ -255,96 +254,4 @@ export function collectTypeUsages(
   }
 
   visit(sourceFile);
-}
-
-function isEmptyObjectType(node: ts.TypeLiteralNode): boolean {
-  return node.members.length === 0;
-}
-
-// eslint-disable-next-line max-statements, max-lines-per-function
-function getContextFromParentNode(parent: ts.Node | undefined): {
-  description: string;
-  functionName?: string;
-} {
-  if (!parent) {
-    return { description: 'unknown context' };
-  }
-
-  if (ts.isParameter(parent)) {
-    const func = parent.parent;
-    const funcName = func && ts.isFunctionLike(func) ? getFunctionName(func) : undefined;
-    return {
-      description: 'function parameter',
-      functionName: funcName,
-    };
-  }
-
-  if (ts.isFunctionLike(parent)) {
-    const funcName = getFunctionName(parent);
-    return {
-      description: 'function return type',
-      functionName: funcName,
-    };
-  }
-
-  if (ts.isVariableDeclaration(parent)) {
-    return {
-      description: 'variable declaration',
-    };
-  }
-
-  if (ts.isPropertyDeclaration(parent)) {
-    return {
-      description: 'property declaration',
-    };
-  }
-
-  if (ts.isTypeAliasDeclaration(parent) || ts.isInterfaceDeclaration(parent)) {
-    return {
-      description: 'nested in type definition',
-    };
-  }
-
-  if (ts.isAsExpression(parent) || ts.isTypeAssertionExpression(parent)) {
-    return {
-      description: 'type assertion',
-    };
-  }
-
-  // Recursively check parent's parent
-  return getContextFromParentNode(parent.parent);
-}
-
-export function collectInlineObjectViolations(
-  sourceFile: ts.SourceFile
-): InlineObjectViolation[] {
-  const violations: InlineObjectViolation[] = [];
-
-  function visitNode(node: ts.Node, parent?: ts.Node): void {
-    // Manually set up parent pointer for this traversal
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (node as any).parent = parent;
-
-    if (ts.isTypeLiteralNode(node)) {
-      // Skip empty object types {}
-      if (!isEmptyObjectType(node)) {
-        const { line, column } = getLineAndColumn(node, sourceFile);
-        const context = getContextFromParentNode(parent);
-
-        violations.push({
-          kind: 'inline-object',
-          context: context.description,
-          filePath: sourceFile.fileName,
-          line,
-          column,
-        });
-      }
-    }
-
-    // Recursively visit child nodes, passing current node as parent
-    ts.forEachChild(node, (child) => visitNode(child, node));
-  }
-
-  visitNode(sourceFile);
-  return violations;
 }

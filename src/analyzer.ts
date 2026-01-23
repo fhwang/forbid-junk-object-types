@@ -2,7 +2,8 @@ import * as ts from 'typescript';
 import * as path from 'path';
 import * as fs from 'fs';
 import { TypeDefinition, TypeUsage, Violation, AnalyzerOptions, AnalysisResult } from './types.js';
-import { collectTypeDefinitions, collectTypeUsages, extendsOtherType, collectInlineObjectViolations } from './parser.js';
+import { collectTypeDefinitions, collectTypeUsages, extendsOtherType } from './parser.js';
+import { collectInlineObjectViolations } from './inline-detector.js';
 
 function getAllTsFiles(dir: string, fileList: string[] = []): string[] {
   const files = fs.readdirSync(dir);

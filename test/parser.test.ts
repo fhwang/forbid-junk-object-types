@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import * as ts from 'typescript';
 import * as path from 'path';
-import { collectInlineObjectViolations } from '../src/parser.js';
+import { collectInlineObjectViolations } from '../src/inline-detector.js';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);

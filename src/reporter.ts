@@ -21,8 +21,7 @@ function reportSingleViolation(violation: Violation, targetDir: string): void {
     console.error(`  Consider extracting this to a named type if it represents a domain concept`);
   } else {
     const _exhaustive: never = violation;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    throw new Error(`Unhandled violation kind: ${(_exhaustive as any).kind}`);
+    throw new Error(`Unhandled violation kind: ${JSON.stringify(_exhaustive)}`);
   }
 
   console.error('');
@@ -57,7 +56,22 @@ function groupViolationsByKind(violations: Violation[]): {
   return { named, inline };
 }
 
-// eslint-disable-next-line max-statements
+function reportNamedViolations(violations: SingleUseNamedViolation[], targetDir: string): void {
+  if (violations.length === 0) return;
+  console.error(`\n❌ Found ${violations.length} single-use named type(s):\n`);
+  for (const violation of violations) {
+    reportSingleViolation(violation, targetDir);
+  }
+}
+
+function reportInlineViolations(violations: InlineObjectViolation[], targetDir: string): void {
+  if (violations.length === 0) return;
+  console.error(`\n❌ Found ${violations.length} inline object type(s):\n`);
+  for (const violation of violations) {
+    reportSingleViolation(violation, targetDir);
+  }
+}
+
 export function reportViolations(violations: Violation[], targetDir: string): void {
   if (violations.length === 0) {
     console.log('✓ No single-use types found');
@@ -65,21 +79,8 @@ export function reportViolations(violations: Violation[], targetDir: string): vo
   }
 
   const { named, inline } = groupViolationsByKind(violations);
-
-  if (named.length > 0) {
-    console.error(`\n❌ Found ${named.length} single-use named type(s):\n`);
-    for (const violation of named) {
-      reportSingleViolation(violation, targetDir);
-    }
-  }
-
-  if (inline.length > 0) {
-    console.error(`\n❌ Found ${inline.length} inline object type(s):\n`);
-    for (const violation of inline) {
-      reportSingleViolation(violation, targetDir);
-    }
-  }
-
+  reportNamedViolations(named, targetDir);
+  reportInlineViolations(inline, targetDir);
   console.error(`\n💡 Total violations: ${violations.length}\n`);
   reportGuidance();
 }

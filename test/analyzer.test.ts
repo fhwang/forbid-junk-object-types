@@ -32,14 +32,16 @@ describe('analyzer', () => {
     expect(typeNames).not.toContain('MultiUseType');
   });
 
-  it('does not flag exported types', async () => {
+  it('flags exported types that are not imported elsewhere (single file)', async () => {
     const result = await analyzeCodebase({
       targetDir: fixturesDir,
       specificFiles: [path.join(fixturesDir, 'src/valid-types.ts')],
     });
 
     const typeNames = result.violations.map(v => v.typeName);
-    expect(typeNames).not.toContain('PublicAPI');
+    // PublicAPI is exported but not imported by any other file in this analysis
+    // so it should now be flagged as a single-use type
+    expect(typeNames).toContain('PublicAPI');
   });
 
   it('does not flag types in inheritance hierarchies', async () => {
@@ -99,5 +101,33 @@ describe('analyzer', () => {
 
     expect(result.filesAnalyzed).toBeGreaterThan(1);
     expect(result.totalTypesAnalyzed).toBeGreaterThan(0);
+  });
+
+  it('flags exported types that are not imported elsewhere', async () => {
+    const result = await analyzeCodebase({
+      targetDir: fixturesDir,
+      specificFiles: [
+        path.join(fixturesDir, 'src/exported-type-provider.ts'),
+        path.join(fixturesDir, 'src/exported-type-consumer.ts'),
+      ],
+    });
+
+    const typeNames = result.violations.map(v => v.typeName);
+    // ExportedButLocalOnly is exported but not imported anywhere - should be flagged
+    expect(typeNames).toContain('ExportedButLocalOnly');
+  });
+
+  it('does not flag exported types that are imported by other files', async () => {
+    const result = await analyzeCodebase({
+      targetDir: fixturesDir,
+      specificFiles: [
+        path.join(fixturesDir, 'src/exported-type-provider.ts'),
+        path.join(fixturesDir, 'src/exported-type-consumer.ts'),
+      ],
+    });
+
+    const typeNames = result.violations.map(v => v.typeName);
+    // ImportedElsewhere is exported AND imported by exported-type-consumer.ts - should NOT be flagged
+    expect(typeNames).not.toContain('ImportedElsewhere');
   });
 });

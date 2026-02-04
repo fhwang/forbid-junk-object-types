@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import * as path from 'path';
 import { analyzeCodebase } from './analyzer.js';
-import { loadSuppressions, saveSuppressions, isSuppressed, generateSuppressionsForAll, mergeSuppressions } from './suppression.js';
-import { reportViolations, reportSuccess, reportSummary } from './reporter.js';
+import { loadSuppressions, saveSuppressions, isSuppressed, isInlineSuppressed, generateSuppressionsForAll, generateInlineSuppressions, mergeSuppressions } from './suppression.js';
+import { reportViolations, reportSuccess, reportSummary, reportInlineViolations } from './reporter.js';
 import { getChangedFiles, findRepoRoot } from './git.js';
-import { AnalyzerOptions } from './types.js';
+import { SuppressionFile, FilteredViolationsResult, AnalysisResult } from './types.js';
 
 interface ParsedArgs {
   targetDir: string;
@@ -14,7 +14,13 @@ interface ParsedArgs {
   help: boolean;
 }
 
-function collectFiles(args: string[], startIndex: number): { files: string[]; nextIndex: number } {
+interface ResultContext {
+  filtered: FilteredViolationsResult;
+  targetDir: string;
+  result: AnalysisResult;
+}
+
+function collectFiles(args: string[], startIndex: number): string[] {
   const files: string[] = [];
   let i = startIndex;
   while (i < args.length) {
@@ -23,43 +29,7 @@ function collectFiles(args: string[], startIndex: number): { files: string[]; ne
     files.push(file);
     i++;
   }
-  return { files, nextIndex: i - 1 };
-}
-
-function handleArgument(arg: string, context: {
-  args: string[];
-  index: number;
-  result: ParsedArgs;
-}): number {
-  switch (arg) {
-    case '--target-dir': {
-      const targetDirArg = context.args[context.index + 1];
-      if (targetDirArg) {
-        context.result.targetDir = path.resolve(targetDirArg);
-      }
-      return context.index + 1;
-    }
-    case '--suppress-all':
-      context.result.suppressAll = true;
-      return context.index;
-    case '--changed-only':
-      context.result.changedOnly = true;
-      return context.index;
-    case '--files': {
-      const collected = collectFiles(context.args, context.index + 1);
-      context.result.files.push(...collected.files);
-      return collected.nextIndex;
-    }
-    case '--help':
-    case '-h':
-      context.result.help = true;
-      return context.index;
-    default:
-      if (arg && !arg.startsWith('--')) {
-        context.result.files.push(arg);
-      }
-      return context.index;
-  }
+  return files;
 }
 
 function parseArgs(args: string[]): ParsedArgs {
@@ -71,10 +41,42 @@ function parseArgs(args: string[]): ParsedArgs {
     help: false,
   };
 
+  function handleArgument(arg: string, index: number): number {
+    switch (arg) {
+      case '--target-dir': {
+        const targetDirArg = args[index + 1];
+        if (targetDirArg) {
+          result.targetDir = path.resolve(targetDirArg);
+        }
+        return index + 1;
+      }
+      case '--suppress-all':
+        result.suppressAll = true;
+        return index;
+      case '--changed-only':
+        result.changedOnly = true;
+        return index;
+      case '--files': {
+        const files = collectFiles(args, index + 1);
+        result.files.push(...files);
+        return index + files.length;
+      }
+      case '--help':
+      case '-h':
+        result.help = true;
+        return index;
+      default:
+        if (arg && !arg.startsWith('--')) {
+          result.files.push(arg);
+        }
+        return index;
+    }
+  }
+
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg !== undefined) {
-      i = handleArgument(arg, { args, index: i, result });
+      i = handleArgument(arg, i);
     }
   }
 
@@ -129,35 +131,51 @@ function determineFilesToCheck(args: ParsedArgs, targetDir: string): string[] | 
   return undefined;
 }
 
-function handleSuppressAll(context: {
-  unsuppressedViolations: Awaited<ReturnType<typeof analyzeCodebase>>['violations'];
-  suppressions: ReturnType<typeof loadSuppressions>;
-  suppressionPath: string;
-  targetDir: string;
-  result: Awaited<ReturnType<typeof analyzeCodebase>>;
-}): void {
-  const newSuppressions = generateSuppressionsForAll(context.unsuppressedViolations, context.targetDir);
-  const mergedSuppressions = mergeSuppressions(context.suppressions, newSuppressions);
-  saveSuppressions(mergedSuppressions, context.suppressionPath);
-  console.log(`✓ Suppressed ${context.unsuppressedViolations.length} violation(s) in ${context.suppressionPath}`);
-  reportSummary(context.result.totalTypesAnalyzed, context.result.filesAnalyzed);
+function handleSuppressAll(
+  context: ResultContext,
+  suppressions: SuppressionFile,
+  suppressionPath: string
+): void {
+  const { filtered, targetDir, result } = context;
+  const newSuppressions = generateSuppressionsForAll(filtered.unsuppressedViolations, targetDir);
+  const newInlineSuppressions = generateInlineSuppressions(filtered.unsuppressedInlineViolations, targetDir);
+  let mergedSuppressions = mergeSuppressions(suppressions, newSuppressions);
+  mergedSuppressions = mergeSuppressions(mergedSuppressions, newInlineSuppressions);
+  saveSuppressions(mergedSuppressions, suppressionPath);
+  const totalSuppressed = filtered.unsuppressedViolations.length + filtered.unsuppressedInlineViolations.length;
+  console.log(`✓ Suppressed ${totalSuppressed} violation(s) in ${suppressionPath}`);
+  reportSummary(result.totalTypesAnalyzed, result.filesAnalyzed);
   process.exit(0);
 }
 
-function handleViolationResults(
-  unsuppressedViolations: Awaited<ReturnType<typeof analyzeCodebase>>['violations'],
-  targetDir: string,
-  result: Awaited<ReturnType<typeof analyzeCodebase>>
-): void {
-  if (unsuppressedViolations.length > 0) {
-    reportViolations(unsuppressedViolations, targetDir);
-    reportSummary(result.totalTypesAnalyzed, result.filesAnalyzed);
-    process.exit(1);
-  } else {
-    reportSuccess();
-    reportSummary(result.totalTypesAnalyzed, result.filesAnalyzed);
-    process.exit(0);
+function handleViolationResults(context: ResultContext): void {
+  const { filtered, targetDir, result } = context;
+  const hasViolations = filtered.unsuppressedViolations.length > 0 || filtered.unsuppressedInlineViolations.length > 0;
+
+  if (filtered.unsuppressedViolations.length > 0) {
+    reportViolations(filtered.unsuppressedViolations, targetDir);
   }
+
+  if (filtered.unsuppressedInlineViolations.length > 0) {
+    reportInlineViolations(filtered.unsuppressedInlineViolations, targetDir);
+  }
+
+  if (!hasViolations) {
+    reportSuccess();
+  }
+
+  reportSummary(result.totalTypesAnalyzed, result.filesAnalyzed);
+  process.exit(hasViolations ? 1 : 0);
+}
+
+function filterSuppressedViolations(
+  result: AnalysisResult,
+  suppressions: SuppressionFile,
+  targetDir: string
+): FilteredViolationsResult {
+  const unsuppressedViolations = result.violations.filter(v => !isSuppressed(v, suppressions, targetDir));
+  const unsuppressedInlineViolations = result.inlineViolations.filter(v => !isInlineSuppressed(v, suppressions, targetDir));
+  return { unsuppressedViolations, unsuppressedInlineViolations };
 }
 
 async function runAnalysis(args: ParsedArgs): Promise<void> {
@@ -165,19 +183,15 @@ async function runAnalysis(args: ParsedArgs): Promise<void> {
   const suppressionPath = path.join(targetDir, 'single-use-types-suppressions.json');
   const suppressions = loadSuppressions(suppressionPath);
   const filesToCheck = determineFilesToCheck(args, targetDir);
-
-  const options: AnalyzerOptions = { targetDir, specificFiles: filesToCheck };
-  const result = await analyzeCodebase(options);
-
-  const unsuppressedViolations = result.violations.filter(
-    v => !isSuppressed(v, suppressions, targetDir)
-  );
+  const result = await analyzeCodebase({ targetDir, specificFiles: filesToCheck });
+  const filtered = filterSuppressedViolations(result, suppressions, targetDir);
+  const context: ResultContext = { filtered, targetDir, result };
 
   if (args.suppressAll) {
-    handleSuppressAll({ unsuppressedViolations, suppressions, suppressionPath, targetDir, result });
+    handleSuppressAll(context, suppressions, suppressionPath);
   }
 
-  handleViolationResults(unsuppressedViolations, targetDir, result);
+  handleViolationResults(context);
 }
 
 async function main(): Promise<void> {

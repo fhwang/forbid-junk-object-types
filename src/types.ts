@@ -19,12 +19,20 @@ export interface TypeUsage {
   line: number;
 }
 
-export interface Violation {
-  typeName: string;
-  filePath: string;
+export interface LineAndColumn {
   line: number;
   column: number;
+}
+
+export interface Violation extends LineAndColumn {
+  typeName: string;
+  filePath: string;
   usedByFunction: string;
+}
+
+export interface InlineTypeViolation extends LineAndColumn {
+  filePath: string;
+  context: string;
 }
 
 export interface SuppressionEntry {
@@ -42,6 +50,18 @@ export interface AnalyzerOptions {
 
 export interface AnalysisResult {
   violations: Violation[];
+  inlineViolations: InlineTypeViolation[];
   totalTypesAnalyzed: number;
   filesAnalyzed: number;
+}
+
+export interface SourceFileAnalysisResult {
+  typeDefinitions: Map<string, TypeDefinition>;
+  typeUsages: Map<string, TypeUsage[]>;
+  inlineViolations: InlineTypeViolation[];
+}
+
+export interface FilteredViolationsResult {
+  unsuppressedViolations: Violation[];
+  unsuppressedInlineViolations: InlineTypeViolation[];
 }

@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { Violation } from './types.js';
+import { Violation, InlineTypeViolation } from './types.js';
 
 function reportSingleViolation(violation: Violation, targetDir: string): void {
   const relativePath = path.relative(targetDir, violation.filePath);
@@ -30,8 +30,34 @@ export function reportViolations(violations: Violation[], targetDir: string): vo
   reportGuidance();
 }
 
+function reportSingleInlineViolation(violation: InlineTypeViolation, targetDir: string): void {
+  const relativePath = path.relative(targetDir, violation.filePath);
+  console.error(`${relativePath}:${violation.line}:${violation.column}`);
+  console.error(`  Inline object type in ${violation.context}. Extract to a named type.`);
+  console.error('');
+}
+
+export function reportInlineViolations(violations: InlineTypeViolation[], targetDir: string): void {
+  if (violations.length === 0) return;
+
+  console.error(`\nFound ${violations.length} inline object type violation(s):\n`);
+
+  for (const violation of violations) {
+    reportSingleInlineViolation(violation, targetDir);
+  }
+
+  reportInlineGuidance();
+}
+
+function reportInlineGuidance(): void {
+  console.error('Inline object types should be extracted to named types that describe domain concepts.');
+  console.error('');
+  console.error('Instead of:  function process(opts: { timeout: number; retries: number })');
+  console.error('Use:         function process(opts: RetryPolicy)');
+}
+
 export function reportSuccess(): void {
-  console.log('✓ No single-use type violations found!');
+  console.log('✓ No type violations found!');
 }
 
 export function reportSummary(totalTypesAnalyzed: number, filesAnalyzed: number): void {

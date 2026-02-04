@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { SuppressionFile, Violation } from './types.js';
+import { SuppressionFile, Violation, InlineTypeViolation } from './types.js';
 
 export function loadSuppressions(suppressionPath: string): SuppressionFile {
   try {
@@ -77,4 +77,34 @@ export function mergeSuppressions(
   }
 
   return merged;
+}
+
+export function isInlineSuppressed(
+  violation: InlineTypeViolation,
+  suppressions: SuppressionFile,
+  targetDir: string
+): boolean {
+  const relativePath = path.relative(targetDir, violation.filePath);
+  const key = `inline:${violation.line}:${violation.column}`;
+  const fileSuppressions = suppressions[relativePath];
+  return fileSuppressions !== undefined && key in fileSuppressions;
+}
+
+export function generateInlineSuppressions(
+  violations: InlineTypeViolation[],
+  targetDir: string
+): SuppressionFile {
+  const suppressions: SuppressionFile = {};
+
+  for (const violation of violations) {
+    const relativePath = path.relative(targetDir, violation.filePath);
+    const key = `inline:${violation.line}:${violation.column}`;
+
+    if (!suppressions[relativePath]) {
+      suppressions[relativePath] = {};
+    }
+    suppressions[relativePath][key] = { reason: violation.context };
+  }
+
+  return suppressions;
 }

@@ -1,8 +1,8 @@
 import * as ts from 'typescript';
 import * as path from 'path';
 import * as fs from 'fs';
-import { TypeDefinition, TypeUsage, Violation, AnalyzerOptions, AnalysisResult } from './types.js';
-import { collectTypeDefinitions, collectTypeUsages, extendsOtherType } from './parser.js';
+import { TypeDefinition, TypeUsage, Violation, AnalyzerOptions, AnalysisResult, SourceFileAnalysisResult } from './types.js';
+import { collectTypeDefinitions, collectTypeUsages, extendsOtherType, collectInlineObjectTypes } from './parser.js';
 
 function getAllTsFiles(dir: string, fileList: string[] = []): string[] {
   const files = fs.readdirSync(dir);
@@ -40,10 +40,6 @@ function isSingleUseType(_definition: TypeDefinition, usages: TypeUsage[]): bool
 }
 
 function hasLegitimateReason(definition: TypeDefinition): boolean {
-  if (definition.isExported) {
-    return true;
-  }
-
   if (ts.isInterfaceDeclaration(definition.node) || ts.isTypeAliasDeclaration(definition.node)) {
     if (extendsOtherType(definition.node as ts.InterfaceDeclaration | ts.TypeAliasDeclaration)) {
       return true;
@@ -83,21 +79,32 @@ function getCompilerOptions(): ts.CompilerOptions {
   };
 }
 
+function processSourceFile(
+  sourceFile: ts.SourceFile,
+  result: SourceFileAnalysisResult
+): void {
+  collectTypeDefinitions(sourceFile, result.typeDefinitions);
+  collectTypeUsages(sourceFile, result.typeUsages);
+  result.inlineViolations.push(...collectInlineObjectTypes(sourceFile));
+}
+
 function analyzeSourceFiles(
   program: ts.Program,
   filesToAnalyze: string[]
-): { typeDefinitions: Map<string, TypeDefinition>; typeUsages: Map<string, TypeUsage[]> } {
-  const typeDefinitions = new Map<string, TypeDefinition>();
-  const typeUsages = new Map<string, TypeUsage[]>();
+): SourceFileAnalysisResult {
+  const result: SourceFileAnalysisResult = {
+    typeDefinitions: new Map<string, TypeDefinition>(),
+    typeUsages: new Map<string, TypeUsage[]>(),
+    inlineViolations: [],
+  };
 
   for (const sourceFile of program.getSourceFiles()) {
     if (!sourceFile.isDeclarationFile && filesToAnalyze.includes(sourceFile.fileName)) {
-      collectTypeDefinitions(sourceFile, typeDefinitions);
-      collectTypeUsages(sourceFile, typeUsages);
+      processSourceFile(sourceFile, result);
     }
   }
 
-  return { typeDefinitions, typeUsages };
+  return result;
 }
 
 function findViolations(
@@ -129,11 +136,15 @@ export async function analyzeCodebase(options: AnalyzerOptions): Promise<Analysi
   const compilerOptions = getCompilerOptions();
   const program = ts.createProgram(filesToAnalyze, compilerOptions);
 
-  const { typeDefinitions, typeUsages } = analyzeSourceFiles(program, filesToAnalyze);
+  // Access type checker to ensure parent pointers are set on AST nodes
+  program.getTypeChecker();
+
+  const { typeDefinitions, typeUsages, inlineViolations } = analyzeSourceFiles(program, filesToAnalyze);
   const violations = findViolations(typeDefinitions, typeUsages);
 
   return {
     violations,
+    inlineViolations,
     totalTypesAnalyzed: typeDefinitions.size,
     filesAnalyzed: filesToAnalyze.length,
   };

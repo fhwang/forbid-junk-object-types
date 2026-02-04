@@ -1,139 +1,11 @@
 import * as ts from 'typescript';
-import { TypeDefinition, TypeUsage } from './types.js';
+import { TypeUsage } from './types.js';
+import { getLineAndColumn, getFunctionName } from './parser-utils.js';
 
-export function getLineAndColumn(node: ts.Node, sourceFile: ts.SourceFile): { line: number; column: number } {
-  const { line, character } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
-  return { line: line + 1, column: character + 1 };
-}
-
-function getTypeReferenceName(typeName: ts.EntityName): string | null {
-  if (ts.isIdentifier(typeName)) {
-    return typeName.text;
-  }
-  if (ts.isQualifiedName(typeName)) {
-    return typeName.right.text;
-  }
-  return null;
-}
-
-export function isObjectLikeType(typeNode: ts.TypeNode): boolean {
-  if (ts.isTypeLiteralNode(typeNode)) {
-    return true;
-  }
-
-  if (ts.isTypeReferenceNode(typeNode) && typeNode.typeName) {
-    const typeName = getTypeReferenceName(typeNode.typeName);
-    if (typeName && ['Pick', 'Omit', 'Record', 'Partial', 'Required'].includes(typeName)) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-export function isExportedNode(node: ts.Node): boolean {
-  const modifiers = ts.canHaveModifiers(node) ? ts.getModifiers(node) : undefined;
-  if (modifiers) {
-    return modifiers.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword);
-  }
-  return false;
-}
-
-export function extendsOtherType(node: ts.InterfaceDeclaration | ts.TypeAliasDeclaration): boolean {
-  if (ts.isInterfaceDeclaration(node) && node.heritageClauses) {
-    return node.heritageClauses.length > 0;
-  }
-  return false;
-}
-
-function addInterfaceDefinition(
-  node: ts.InterfaceDeclaration,
-  sourceFile: ts.SourceFile,
-  definitions: Map<string, TypeDefinition>
-): void {
-  const name = node.name.text;
-  const { line, column } = getLineAndColumn(node, sourceFile);
-  definitions.set(`${sourceFile.fileName}:${name}`, {
-    name,
-    kind: 'interface',
-    filePath: sourceFile.fileName,
-    line,
-    column,
-    isObjectType: true,
-    node,
-    isExported: isExportedNode(node),
-  });
-}
-
-function addTypeAliasDefinition(
-  node: ts.TypeAliasDeclaration,
-  sourceFile: ts.SourceFile,
-  definitions: Map<string, TypeDefinition>
-): void {
-  const name = node.name.text;
-  const isObjectType = isObjectLikeType(node.type);
-  if (isObjectType) {
-    const { line, column } = getLineAndColumn(node, sourceFile);
-    definitions.set(`${sourceFile.fileName}:${name}`, {
-      name,
-      kind: 'type',
-      filePath: sourceFile.fileName,
-      line,
-      column,
-      isObjectType: true,
-      node,
-      isExported: isExportedNode(node),
-    });
-  }
-}
-
-export function collectTypeDefinitions(
-  sourceFile: ts.SourceFile,
-  definitions: Map<string, TypeDefinition>
-): void {
-  function visit(node: ts.Node): void {
-    if (ts.isInterfaceDeclaration(node)) {
-      addInterfaceDefinition(node, sourceFile, definitions);
-    }
-    if (ts.isTypeAliasDeclaration(node)) {
-      addTypeAliasDefinition(node, sourceFile, definitions);
-    }
-    ts.forEachChild(node, visit);
-  }
-
-  visit(sourceFile);
-}
-
-function getArrowFunctionName(node: ts.Node): string | undefined {
-  const parent = node.parent;
-  if (!parent) {
-    return undefined;
-  }
-
-  if (ts.isVariableDeclaration(parent) && ts.isIdentifier(parent.name)) {
-    return parent.name.text;
-  }
-  if (ts.isPropertyAssignment(parent) && ts.isIdentifier(parent.name)) {
-    return parent.name.text;
-  }
-  return undefined;
-}
-
-export function getFunctionName(node: ts.Node): string | undefined {
-  if (ts.isFunctionDeclaration(node) && node.name) {
-    return node.name.text;
-  }
-
-  if (ts.isMethodDeclaration(node) && ts.isIdentifier(node.name)) {
-    return node.name.text;
-  }
-
-  if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
-    return getArrowFunctionName(node);
-  }
-
-  return undefined;
-}
+// Re-export from other modules for backwards compatibility
+export { getLineAndColumn, isObjectLikeType, isExportedNode, extendsOtherType, getFunctionName } from './parser-utils.js';
+export { collectTypeDefinitions } from './type-definitions.js';
+export { collectInlineObjectTypes } from './inline-types.js';
 
 function extractTypeNameFromReference(typeNode: ts.TypeReferenceNode): string | null {
   const typeName = typeNode.typeName;
@@ -146,6 +18,33 @@ function extractTypeNameFromReference(typeNode: ts.TypeReferenceNode): string | 
   return null;
 }
 
+function extractFromTypeReference(typeNode: ts.TypeReferenceNode): string[] {
+  const typeNames: string[] = [];
+  const name = extractTypeNameFromReference(typeNode);
+  if (name) typeNames.push(name);
+  if (typeNode.typeArguments) {
+    for (const arg of typeNode.typeArguments) {
+      typeNames.push(...extractAllTypeNames(arg));
+    }
+  }
+  return typeNames;
+}
+
+function extractAllTypeNames(typeNode: ts.TypeNode | undefined): string[] {
+  if (!typeNode) return [];
+
+  if (ts.isTypeReferenceNode(typeNode)) {
+    return extractFromTypeReference(typeNode);
+  }
+  if (ts.isArrayTypeNode(typeNode)) {
+    return extractAllTypeNames(typeNode.elementType);
+  }
+  if (ts.isUnionTypeNode(typeNode) || ts.isIntersectionTypeNode(typeNode)) {
+    return typeNode.types.flatMap(extractAllTypeNames);
+  }
+  return [];
+}
+
 interface UsageContext {
   sourceFile: ts.SourceFile;
   addUsage: (typeName: string, usage: TypeUsage) => void;
@@ -154,30 +53,12 @@ interface UsageContext {
 
 function processFunctionParameters(node: ts.FunctionLikeDeclaration, context: UsageContext): void {
   for (const param of node.parameters) {
-    if (param.type && ts.isTypeReferenceNode(param.type)) {
-      const typeName = extractTypeNameFromReference(param.type);
-      if (typeName) {
-        const { line } = getLineAndColumn(param, context.sourceFile);
-        context.addUsage(typeName, {
-          typeName,
-          usageContext: 'function-param',
-          functionName: context.functionName,
-          filePath: context.sourceFile.fileName,
-          line,
-        });
-      }
-    }
-  }
-}
-
-function processFunctionReturnType(node: ts.FunctionLikeDeclaration, context: UsageContext): void {
-  if (node.type && ts.isTypeReferenceNode(node.type)) {
-    const typeName = extractTypeNameFromReference(node.type);
-    if (typeName) {
-      const { line } = getLineAndColumn(node.type, context.sourceFile);
+    const typeNames = extractAllTypeNames(param.type);
+    for (const typeName of typeNames) {
+      const { line } = getLineAndColumn(param, context.sourceFile);
       context.addUsage(typeName, {
         typeName,
-        usageContext: 'function-return',
+        usageContext: 'function-param',
         functionName: context.functionName,
         filePath: context.sourceFile.fileName,
         line,
@@ -186,18 +67,30 @@ function processFunctionReturnType(node: ts.FunctionLikeDeclaration, context: Us
   }
 }
 
+function processFunctionReturnType(node: ts.FunctionLikeDeclaration, context: UsageContext): void {
+  const typeNames = extractAllTypeNames(node.type);
+  for (const typeName of typeNames) {
+    const { line } = getLineAndColumn(node.type!, context.sourceFile);
+    context.addUsage(typeName, {
+      typeName,
+      usageContext: 'function-return',
+      functionName: context.functionName,
+      filePath: context.sourceFile.fileName,
+      line,
+    });
+  }
+}
+
 function processVariableType(node: ts.VariableDeclaration, context: UsageContext): void {
-  if (node.type && ts.isTypeReferenceNode(node.type)) {
-    const typeName = extractTypeNameFromReference(node.type);
-    if (typeName) {
-      const { line } = getLineAndColumn(node, context.sourceFile);
-      context.addUsage(typeName, {
-        typeName,
-        usageContext: 'variable',
-        filePath: context.sourceFile.fileName,
-        line,
-      });
-    }
+  const typeNames = extractAllTypeNames(node.type);
+  for (const typeName of typeNames) {
+    const { line } = getLineAndColumn(node, context.sourceFile);
+    context.addUsage(typeName, {
+      typeName,
+      usageContext: 'variable',
+      filePath: context.sourceFile.fileName,
+      line,
+    });
   }
 }
 
@@ -217,6 +110,58 @@ function processFunctionNode(
   processFunctionReturnType(node, fullContext);
 }
 
+function extractHeritageTypeName(expr: ts.ExpressionWithTypeArguments): string | null {
+  if (ts.isIdentifier(expr.expression)) {
+    return expr.expression.text;
+  }
+  return null;
+}
+
+function processInterfaceHeritage(node: ts.InterfaceDeclaration, context: UsageContext): void {
+  const interfaceName = node.name.text;
+  if (!node.heritageClauses) return;
+
+  for (const clause of node.heritageClauses) {
+    for (const type of clause.types) {
+      const typeName = extractHeritageTypeName(type);
+      if (typeName) {
+        const { line } = getLineAndColumn(type, context.sourceFile);
+        context.addUsage(typeName, {
+          typeName,
+          usageContext: 'property',
+          functionName: interfaceName,
+          filePath: context.sourceFile.fileName,
+          line,
+        });
+      }
+    }
+  }
+}
+
+function processInterfaceProperties(node: ts.InterfaceDeclaration, context: UsageContext): void {
+  const interfaceName = node.name.text;
+  for (const member of node.members) {
+    if (ts.isPropertySignature(member) && member.type) {
+      const typeNames = extractAllTypeNames(member.type);
+      for (const typeName of typeNames) {
+        const { line } = getLineAndColumn(member, context.sourceFile);
+        context.addUsage(typeName, {
+          typeName,
+          usageContext: 'property',
+          functionName: interfaceName,
+          filePath: context.sourceFile.fileName,
+          line,
+        });
+      }
+    }
+  }
+}
+
+function processInterface(node: ts.InterfaceDeclaration, context: UsageContext): void {
+  processInterfaceHeritage(node, context);
+  processInterfaceProperties(node, context);
+}
+
 export function collectTypeUsages(
   sourceFile: ts.SourceFile,
   usages: Map<string, TypeUsage[]>
@@ -229,7 +174,7 @@ export function collectTypeUsages(
   }
 
   let currentFunctionName: string | undefined;
-  const baseContext = { sourceFile, addUsage };
+  const baseContext: UsageContext = { sourceFile, addUsage };
 
   function processNode(node: ts.Node): void {
     if (isFunctionLike(node)) {
@@ -237,6 +182,9 @@ export function collectTypeUsages(
     }
     if (ts.isVariableDeclaration(node)) {
       processVariableType(node, baseContext);
+    }
+    if (ts.isInterfaceDeclaration(node)) {
+      processInterface(node, baseContext);
     }
   }
 

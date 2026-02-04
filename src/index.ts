@@ -85,10 +85,10 @@ function parseArgs(args: string[]): ParsedArgs {
 
 function printHelp(): void {
   console.log(`
-Single-use Type Linter
+Junk Object Type Linter
 
 Usage:
-  single-use-types [options]
+  forbid-junk-object-types [options]
 
 Options:
   --target-dir <path>    Directory to analyze (default: current directory)
@@ -98,10 +98,10 @@ Options:
   --help, -h            Show this help message
 
 Examples:
-  single-use-types --target-dir ./client
-  single-use-types --changed-only
-  single-use-types --suppress-all
-  single-use-types --files src/foo.ts src/bar.ts
+  forbid-junk-object-types --target-dir ./client
+  forbid-junk-object-types --changed-only
+  forbid-junk-object-types --suppress-all
+  forbid-junk-object-types --files src/foo.ts src/bar.ts
 `);
 }
 
@@ -180,7 +180,7 @@ function filterSuppressedViolations(
 
 async function runAnalysis(args: ParsedArgs): Promise<void> {
   const targetDir = args.targetDir;
-  const suppressionPath = path.join(targetDir, 'single-use-types-suppressions.json');
+  const suppressionPath = path.join(targetDir, 'junk-object-types-suppressions.json');
   const suppressions = loadSuppressions(suppressionPath);
   const filesToCheck = determineFilesToCheck(args, targetDir);
   const result = await analyzeCodebase({ targetDir, specificFiles: filesToCheck });

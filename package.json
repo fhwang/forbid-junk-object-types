@@ -1,11 +1,11 @@
 {
-  "name": "check-single-use-types",
+  "name": "forbid-junk-object-types",
   "version": "1.0.0",
   "description": "TypeScript linter that detects object types and interfaces used by only a single function",
   "main": "./dist/index.js",
   "type": "module",
   "bin": {
-    "check-single-use-types": "./dist/index.js"
+    "forbid-junk-object-types": "./dist/index.js"
   },
   "exports": {
     ".": {
@@ -44,12 +44,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/fhwang/check-single-use-types.git"
+    "url": "https://github.com/fhwang/forbid-junk-object-types.git"
   },
   "bugs": {
-    "url": "https://github.com/fhwang/check-single-use-types/issues"
+    "url": "https://github.com/fhwang/forbid-junk-object-types/issues"
   },
-  "homepage": "https://github.com/fhwang/check-single-use-types#readme",
+  "homepage": "https://github.com/fhwang/forbid-junk-object-types#readme",
   "packageManager": "pnpm@10.19.0",
   "engines": {
     "node": ">=18.0.0"

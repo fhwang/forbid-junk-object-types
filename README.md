@@ -1,4 +1,4 @@
-# check-single-use-types
+# forbid-junk-object-types
 
 A TypeScript linter that detects object types and interfaces used by only a single function. This helps identify cases where developers create generic wrapper types that don't describe actual domain concepts, often to work around ESLint's `max-params` rule.
 
@@ -33,11 +33,11 @@ This tool:
 ## Installation
 
 ```bash
-npm install check-single-use-types
+npm install forbid-junk-object-types
 # or
-pnpm add check-single-use-types
+pnpm add forbid-junk-object-types
 # or
-yarn add check-single-use-types
+yarn add forbid-junk-object-types
 ```
 
 ## Usage
@@ -46,19 +46,19 @@ yarn add check-single-use-types
 
 ```bash
 # Check all files in current directory
-npx check-single-use-types
+npx forbid-junk-object-types
 
 # Check specific directory
-npx check-single-use-types --target-dir ./src
+npx forbid-junk-object-types --target-dir ./src
 
 # Check only changed files (for CI)
-npx check-single-use-types --changed-only
+npx forbid-junk-object-types --changed-only
 
 # Generate suppressions for all violations
-npx check-single-use-types --suppress-all
+npx forbid-junk-object-types --suppress-all
 
 # Check specific files
-npx check-single-use-types --files src/foo.ts src/bar.ts
+npx forbid-junk-object-types --files src/foo.ts src/bar.ts
 ```
 
 ### NPM Scripts
@@ -68,8 +68,8 @@ Add to your `package.json`:
 ```json
 {
   "scripts": {
-    "check-types": "check-single-use-types",
-    "check-types:changed": "check-single-use-types --changed-only"
+    "check-types": "forbid-junk-object-types",
+    "check-types:changed": "forbid-junk-object-types --changed-only"
   }
 }
 ```
@@ -84,7 +84,7 @@ Add to your `package.json`:
 
 ## Suppression Mechanism
 
-Suppressions are stored in `<target-dir>/single-use-types-suppressions.json`:
+Suppressions are stored in `<target-dir>/junk-object-types-suppressions.json`:
 
 ```json
 {
@@ -121,7 +121,7 @@ name: CI
 on: [push, pull_request]
 
 jobs:
-  single-use-types:
+  junk-object-types:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -131,8 +131,8 @@ jobs:
         with:
           node-version: '20'
       - run: npm ci
-      - name: Check for single-use types (changed files only)
-        run: npx check-single-use-types --changed-only
+      - name: Check for junk object types (changed files only)
+        run: npx forbid-junk-object-types --changed-only
 ```
 
 ### Other CI Systems

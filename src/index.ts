@@ -33,6 +33,12 @@ function collectFiles(args: string[], startIndex: number): string[] {
   return files;
 }
 
+function applyStringOption(flag: string, value: string | undefined, result: ParsedArgs): void {
+  if (!value) return;
+  if (flag === '--target-dir') result.targetDir = path.resolve(value);
+  else if (flag === '--source-dir') result.sourceDir = value;
+}
+
 function parseArgs(args: string[]): ParsedArgs {
   const result: ParsedArgs = {
     targetDir: process.cwd(),
@@ -44,48 +50,27 @@ function parseArgs(args: string[]): ParsedArgs {
 
   function handleArgument(arg: string, index: number): number {
     switch (arg) {
-      case '--target-dir': {
-        const targetDirArg = args[index + 1];
-        if (targetDirArg) {
-          result.targetDir = path.resolve(targetDirArg);
-        }
+      case '--target-dir':
+      case '--source-dir':
+        applyStringOption(arg, args[index + 1], result);
         return index + 1;
-      }
-      case '--source-dir': {
-        const sourceDirArg = args[index + 1];
-        if (sourceDirArg) {
-          result.sourceDir = sourceDirArg;
-        }
-        return index + 1;
-      }
-      case '--suppress-all':
-        result.suppressAll = true;
-        return index;
-      case '--changed-only':
-        result.changedOnly = true;
-        return index;
+      case '--suppress-all': result.suppressAll = true; return index;
+      case '--changed-only': result.changedOnly = true; return index;
       case '--files': {
         const files = collectFiles(args, index + 1);
         result.files.push(...files);
         return index + files.length;
       }
-      case '--help':
-      case '-h':
-        result.help = true;
-        return index;
+      case '--help': case '-h': result.help = true; return index;
       default:
-        if (arg && !arg.startsWith('--')) {
-          result.files.push(arg);
-        }
+        if (arg && !arg.startsWith('--')) result.files.push(arg);
         return index;
     }
   }
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    if (arg !== undefined) {
-      i = handleArgument(arg, i);
-    }
+    if (arg !== undefined) i = handleArgument(arg, i);
   }
 
   return result;

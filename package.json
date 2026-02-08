@@ -1,6 +1,6 @@
 {
   "name": "forbid-junk-object-types",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "TypeScript linter that detects object types and interfaces used by only a single function",
   "main": "./dist/index.js",
   "type": "module",

@@ -43,6 +43,7 @@ export type SuppressionFile = Record<string, Record<string, SuppressionEntry>>;
 
 export interface AnalyzerOptions {
   targetDir: string;
+  sourceDir?: string;
   changedFilesOnly?: boolean;
   specificFiles?: string[];
   suppressionFile?: string;

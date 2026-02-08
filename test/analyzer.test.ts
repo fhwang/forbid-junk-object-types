@@ -8,6 +8,8 @@ const __dirname = path.dirname(__filename);
 
 describe('analyzer', () => {
   const fixturesDir = path.join(__dirname, 'fixtures');
+  const fixturesNoSrcDir = path.join(__dirname, 'fixtures-no-src');
+  const fixturesCustomSrcDir = path.join(__dirname, 'fixtures-custom-src');
 
   it('detects single-use interface violations', async () => {
     const result = await analyzeCodebase({
@@ -129,5 +131,37 @@ describe('analyzer', () => {
     const typeNames = result.violations.map(v => v.typeName);
     // ImportedElsewhere is exported AND imported by exported-type-consumer.ts - should NOT be flagged
     expect(typeNames).not.toContain('ImportedElsewhere');
+  });
+
+  it('works with --files when target directory has no src/ subdirectory', async () => {
+    const result = await analyzeCodebase({
+      targetDir: fixturesNoSrcDir,
+      specificFiles: [path.join(fixturesNoSrcDir, 'root-level-types.ts')],
+    });
+
+    expect(result.violations.length).toBeGreaterThan(0);
+    const typeNames = result.violations.map(v => v.typeName);
+    expect(typeNames).toContain('SingleUseConfig');
+  });
+
+  it('uses sourceDir option instead of hardcoded src/ when provided', async () => {
+    const result = await analyzeCodebase({
+      targetDir: fixturesCustomSrcDir,
+      sourceDir: 'lib',
+    });
+
+    expect(result.filesAnalyzed).toBeGreaterThan(0);
+    const typeNames = result.violations.map(v => v.typeName);
+    expect(typeNames).toContain('CustomConfig');
+  });
+
+  it('defaults to target directory itself when no sourceDir and no src/ exists', async () => {
+    const result = await analyzeCodebase({
+      targetDir: fixturesNoSrcDir,
+    });
+
+    expect(result.filesAnalyzed).toBeGreaterThan(0);
+    const typeNames = result.violations.map(v => v.typeName);
+    expect(typeNames).toContain('SingleUseConfig');
   });
 });

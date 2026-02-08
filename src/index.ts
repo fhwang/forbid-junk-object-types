@@ -8,6 +8,7 @@ import { SuppressionFile, FilteredViolationsResult, AnalysisResult } from './typ
 
 interface ParsedArgs {
   targetDir: string;
+  sourceDir?: string;
   suppressAll: boolean;
   changedOnly: boolean;
   files: string[];
@@ -47,6 +48,13 @@ function parseArgs(args: string[]): ParsedArgs {
         const targetDirArg = args[index + 1];
         if (targetDirArg) {
           result.targetDir = path.resolve(targetDirArg);
+        }
+        return index + 1;
+      }
+      case '--source-dir': {
+        const sourceDirArg = args[index + 1];
+        if (sourceDirArg) {
+          result.sourceDir = sourceDirArg;
         }
         return index + 1;
       }
@@ -92,6 +100,7 @@ Usage:
 
 Options:
   --target-dir <path>    Directory to analyze (default: current directory)
+  --source-dir <path>    Subdirectory containing source files (default: src/, or target directory if src/ doesn't exist)
   --suppress-all         Generate suppressions for all violations
   --changed-only         Only check files changed vs origin/main
   --files <file...>      Specific files to check
@@ -99,6 +108,7 @@ Options:
 
 Examples:
   forbid-junk-object-types --target-dir ./client
+  forbid-junk-object-types --source-dir lib
   forbid-junk-object-types --changed-only
   forbid-junk-object-types --suppress-all
   forbid-junk-object-types --files src/foo.ts src/bar.ts
@@ -183,7 +193,7 @@ async function runAnalysis(args: ParsedArgs): Promise<void> {
   const suppressionPath = path.join(targetDir, 'junk-object-types-suppressions.json');
   const suppressions = loadSuppressions(suppressionPath);
   const filesToCheck = determineFilesToCheck(args, targetDir);
-  const result = await analyzeCodebase({ targetDir, specificFiles: filesToCheck });
+  const result = await analyzeCodebase({ targetDir, sourceDir: args.sourceDir, specificFiles: filesToCheck });
   const filtered = filterSuppressedViolations(result, suppressions, targetDir);
   const context: ResultContext = { filtered, targetDir, result };
 

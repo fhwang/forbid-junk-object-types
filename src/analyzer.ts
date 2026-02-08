@@ -55,16 +55,24 @@ function hasLegitimateReason(definition: TypeDefinition): boolean {
 }
 
 function getFilesToAnalyze(options: AnalyzerOptions): string[] {
-  const srcDir = path.join(options.targetDir, 'src');
-
-  if (!fs.existsSync(srcDir)) {
-    throw new Error(`Source directory not found: ${srcDir}`);
-  }
-
   if (options.specificFiles && options.specificFiles.length > 0) {
     return options.specificFiles.map(f => path.resolve(f));
   }
-  return getAllTsFiles(srcDir);
+
+  if (options.sourceDir) {
+    const srcDir = path.join(options.targetDir, options.sourceDir);
+    if (!fs.existsSync(srcDir)) {
+      throw new Error(`Source directory not found: ${srcDir}`);
+    }
+    return getAllTsFiles(srcDir);
+  }
+
+  const defaultSrcDir = path.join(options.targetDir, 'src');
+  if (fs.existsSync(defaultSrcDir)) {
+    return getAllTsFiles(defaultSrcDir);
+  }
+
+  return getAllTsFiles(options.targetDir);
 }
 
 function getCompilerOptions(): ts.CompilerOptions {

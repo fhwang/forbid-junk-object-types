@@ -8,6 +8,7 @@ import { SuppressionFile, FilteredViolationsResult, AnalysisResult } from './typ
 
 interface ParsedArgs {
   targetDir: string;
+  sourceDir?: string;
   suppressAll: boolean;
   changedOnly: boolean;
   files: string[];
@@ -32,6 +33,12 @@ function collectFiles(args: string[], startIndex: number): string[] {
   return files;
 }
 
+function applyStringOption(flag: string, value: string | undefined, result: ParsedArgs): void {
+  if (!value) return;
+  if (flag === '--target-dir') result.targetDir = path.resolve(value);
+  else if (flag === '--source-dir') result.sourceDir = value;
+}
+
 function parseArgs(args: string[]): ParsedArgs {
   const result: ParsedArgs = {
     targetDir: process.cwd(),
@@ -43,41 +50,27 @@ function parseArgs(args: string[]): ParsedArgs {
 
   function handleArgument(arg: string, index: number): number {
     switch (arg) {
-      case '--target-dir': {
-        const targetDirArg = args[index + 1];
-        if (targetDirArg) {
-          result.targetDir = path.resolve(targetDirArg);
-        }
+      case '--target-dir':
+      case '--source-dir':
+        applyStringOption(arg, args[index + 1], result);
         return index + 1;
-      }
-      case '--suppress-all':
-        result.suppressAll = true;
-        return index;
-      case '--changed-only':
-        result.changedOnly = true;
-        return index;
+      case '--suppress-all': result.suppressAll = true; return index;
+      case '--changed-only': result.changedOnly = true; return index;
       case '--files': {
         const files = collectFiles(args, index + 1);
         result.files.push(...files);
         return index + files.length;
       }
-      case '--help':
-      case '-h':
-        result.help = true;
-        return index;
+      case '--help': case '-h': result.help = true; return index;
       default:
-        if (arg && !arg.startsWith('--')) {
-          result.files.push(arg);
-        }
+        if (arg && !arg.startsWith('--')) result.files.push(arg);
         return index;
     }
   }
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    if (arg !== undefined) {
-      i = handleArgument(arg, i);
-    }
+    if (arg !== undefined) i = handleArgument(arg, i);
   }
 
   return result;
@@ -92,6 +85,7 @@ Usage:
 
 Options:
   --target-dir <path>    Directory to analyze (default: current directory)
+  --source-dir <path>    Subdirectory containing source files (default: src/, or target directory if src/ doesn't exist)
   --suppress-all         Generate suppressions for all violations
   --changed-only         Only check files changed vs origin/main
   --files <file...>      Specific files to check
@@ -99,6 +93,7 @@ Options:
 
 Examples:
   forbid-junk-object-types --target-dir ./client
+  forbid-junk-object-types --source-dir lib
   forbid-junk-object-types --changed-only
   forbid-junk-object-types --suppress-all
   forbid-junk-object-types --files src/foo.ts src/bar.ts
@@ -183,7 +178,7 @@ async function runAnalysis(args: ParsedArgs): Promise<void> {
   const suppressionPath = path.join(targetDir, 'junk-object-types-suppressions.json');
   const suppressions = loadSuppressions(suppressionPath);
   const filesToCheck = determineFilesToCheck(args, targetDir);
-  const result = await analyzeCodebase({ targetDir, specificFiles: filesToCheck });
+  const result = await analyzeCodebase({ targetDir, sourceDir: args.sourceDir, specificFiles: filesToCheck });
   const filtered = filterSuppressedViolations(result, suppressions, targetDir);
   const context: ResultContext = { filtered, targetDir, result };
 

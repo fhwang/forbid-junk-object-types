@@ -162,6 +162,26 @@ function processInterface(node: ts.InterfaceDeclaration, context: UsageContext):
   processInterfaceProperties(node, context);
 }
 
+function processTypeAliasProperties(node: ts.TypeAliasDeclaration, context: UsageContext): void {
+  if (!ts.isTypeLiteralNode(node.type)) return;
+  const aliasName = node.name.text;
+  for (const member of node.type.members) {
+    if (ts.isPropertySignature(member) && member.type) {
+      const typeNames = extractAllTypeNames(member.type);
+      for (const typeName of typeNames) {
+        const { line } = getLineAndColumn(member, context.sourceFile);
+        context.addUsage(typeName, {
+          typeName,
+          usageContext: 'property',
+          functionName: aliasName,
+          filePath: context.sourceFile.fileName,
+          line,
+        });
+      }
+    }
+  }
+}
+
 export function collectTypeUsages(
   sourceFile: ts.SourceFile,
   usages: Map<string, TypeUsage[]>
@@ -185,6 +205,9 @@ export function collectTypeUsages(
     }
     if (ts.isInterfaceDeclaration(node)) {
       processInterface(node, baseContext);
+    }
+    if (ts.isTypeAliasDeclaration(node)) {
+      processTypeAliasProperties(node, baseContext);
     }
   }
 

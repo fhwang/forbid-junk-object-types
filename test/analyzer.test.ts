@@ -172,6 +172,23 @@ describe('analyzer', () => {
     expect(typeNames).not.toContain('ApiOrder');
   });
 
+  it('does not flag types used as a field in an intersection type alias', async () => {
+    // ApiSubscription is used as:
+    // 1. A param in cancelSubscription (intersection-type-consumer.ts)
+    // 2. A field in type alias ApiUser which is an intersection (intersection-type-alias.ts)
+    // So it should NOT be flagged as single-use
+    const result = await analyzeCodebase({
+      targetDir: fixturesDir,
+      specificFiles: [
+        path.join(fixturesDir, 'src/intersection-type-alias.ts'),
+        path.join(fixturesDir, 'src/intersection-type-consumer.ts'),
+      ],
+    });
+
+    const typeNames = result.violations.map(v => v.typeName);
+    expect(typeNames).not.toContain('ApiSubscription');
+  });
+
   it('defaults to target directory itself when no sourceDir and no src/ exists', async () => {
     const result = await analyzeCodebase({
       targetDir: fixturesNoSrcDir,

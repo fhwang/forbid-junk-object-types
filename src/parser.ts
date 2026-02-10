@@ -163,21 +163,30 @@ function processInterface(node: ts.InterfaceDeclaration, context: UsageContext):
 }
 
 function processTypeAliasProperties(node: ts.TypeAliasDeclaration, context: UsageContext): void {
-  if (!ts.isTypeLiteralNode(node.type)) return;
   const aliasName = node.name.text;
-  for (const member of node.type.members) {
-    if (ts.isPropertySignature(member) && member.type) {
-      const typeNames = extractAllTypeNames(member.type);
-      for (const typeName of typeNames) {
-        const { line } = getLineAndColumn(member, context.sourceFile);
-        context.addUsage(typeName, {
-          typeName,
-          usageContext: 'property',
-          functionName: aliasName,
-          filePath: context.sourceFile.fileName,
-          line,
-        });
+  scanTypeNodeForProperties(node.type, aliasName, context);
+}
+
+function scanTypeNodeForProperties(typeNode: ts.TypeNode, aliasName: string, context: UsageContext): void {
+  if (ts.isTypeLiteralNode(typeNode)) {
+    for (const member of typeNode.members) {
+      if (ts.isPropertySignature(member) && member.type) {
+        const typeNames = extractAllTypeNames(member.type);
+        for (const typeName of typeNames) {
+          const { line } = getLineAndColumn(member, context.sourceFile);
+          context.addUsage(typeName, {
+            typeName,
+            usageContext: 'property',
+            functionName: aliasName,
+            filePath: context.sourceFile.fileName,
+            line,
+          });
+        }
       }
+    }
+  } else if (ts.isIntersectionTypeNode(typeNode) || ts.isUnionTypeNode(typeNode)) {
+    for (const member of typeNode.types) {
+      scanTypeNodeForProperties(member, aliasName, context);
     }
   }
 }

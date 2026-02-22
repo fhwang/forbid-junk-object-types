@@ -50,7 +50,7 @@ describe('collectInlineObjectTypes', () => {
     expect(paramViolation?.line).toBe(5);
   });
 
-  it('detects inline type in return type', () => {
+  it('does NOT flag inline type in return type', () => {
     const filePath = path.join(fixturesDir, 'src/inline-type-violations.ts');
     const program = createProgram(filePath);
     const sourceFile = program.getSourceFile(filePath)!;
@@ -58,8 +58,7 @@ describe('collectInlineObjectTypes', () => {
     const violations = collectInlineObjectTypes(sourceFile);
 
     const returnViolation = violations.find(v => v.context === 'return type');
-    expect(returnViolation).toBeDefined();
-    expect(returnViolation?.line).toBe(10);
+    expect(returnViolation).toBeUndefined();
   });
 
   it('detects inline type in variable declaration', () => {
@@ -159,7 +158,7 @@ describe('analyzeCodebase with inline types', () => {
 
     const contexts = result.inlineViolations.map(v => v.context);
     expect(contexts).toContain("parameter 'opts'");
-    expect(contexts).toContain('return type');
+    expect(contexts).not.toContain('return type');
     expect(contexts).toContain("variable 'config'");
     expect(contexts).toContain('type assertion');
     expect(contexts).toContain('generic argument');

@@ -31,8 +31,6 @@ function getInlineTypeContext(node: ts.TypeLiteralNode): string | null {
   if (!parent) return null;
 
   if (ts.isParameter(parent)) return getParameterContext(parent);
-  if (ts.isFunctionDeclaration(parent) || ts.isMethodDeclaration(parent) ||
-      ts.isArrowFunction(parent) || ts.isFunctionExpression(parent)) return 'return type';
   if (ts.isVariableDeclaration(parent) && ts.isIdentifier(parent.name)) return `variable '${parent.name.text}'`;
   if (ts.isAsExpression(parent)) return 'type assertion';
   if (ts.isTypeReferenceNode(parent) && parent.typeArguments?.includes(node)) return 'generic argument';

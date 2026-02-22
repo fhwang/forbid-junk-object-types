@@ -6,7 +6,7 @@ function withParam(opts: { name: string; count: number }) {
   console.log(opts.name, opts.count);
 }
 
-// Should flag: inline type in return type
+// Should NOT flag: inline type in return type (return types are exempted)
 function withReturn(): { success: boolean; message: string } {
   return { success: true, message: 'ok' };
 }

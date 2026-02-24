@@ -142,6 +142,14 @@ The tool uses standard exit codes:
 - `1` - Violations found
 - `2` - Error occurred
 
+## AI-assisted fixing
+
+This package includes guidance for AI coding assistants at `docs/fixing-violations.md`. To give your AI tool context for resolving violations:
+
+**Claude Code** — Add to your project's `CLAUDE.md`:
+
+    @file node_modules/forbid-junk-object-types/docs/fixing-violations.md
+
 ## Development
 
 ```bash

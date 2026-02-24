@@ -1,6 +1,12 @@
 import * as path from 'path';
 import { Violation, InlineTypeViolation } from './types.js';
 
+function reportHintsReference(): void {
+  console.error('');
+  console.error('For AI-assisted fixing guidance, see:');
+  console.error('  node_modules/forbid-junk-object-types/docs/fixing-violations.md');
+}
+
 function reportSingleViolation(violation: Violation, targetDir: string): void {
   const relativePath = path.relative(targetDir, violation.filePath);
   console.error(`${relativePath}:${violation.line}:${violation.column}`);
@@ -18,6 +24,7 @@ function reportGuidance(): void {
   console.error('  ✗ interface SearchOptions { query: string, page: number }');
   console.error('  ✓ interface SearchQuery { query: string, page: number }');
   console.error('  ✓ Or inline if truly one-off: (query: string, page: number) => ...');
+  reportHintsReference();
 }
 
 export function reportViolations(violations: Violation[], targetDir: string): void {
@@ -54,6 +61,7 @@ function reportInlineGuidance(): void {
   console.error('');
   console.error('Instead of:  function process(opts: { timeout: number; retries: number })');
   console.error('Use:         function process(opts: RetryPolicy)');
+  reportHintsReference();
 }
 
 export function reportSuccess(): void {

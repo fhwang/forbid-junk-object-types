@@ -42,6 +42,11 @@ function extractAllTypeNames(typeNode: ts.TypeNode | undefined): string[] {
   if (ts.isUnionTypeNode(typeNode) || ts.isIntersectionTypeNode(typeNode)) {
     return typeNode.types.flatMap(extractAllTypeNames);
   }
+  if (ts.isTypeLiteralNode(typeNode)) {
+    return typeNode.members
+      .filter((m): m is ts.PropertySignature => ts.isPropertySignature(m) && !!m.type)
+      .flatMap(m => extractAllTypeNames(m.type));
+  }
   return [];
 }
 

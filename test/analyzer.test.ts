@@ -189,6 +189,16 @@ describe('analyzer', () => {
     expect(typeNames).not.toContain('ApiSubscription');
   });
 
+  it('does not flag types used as a property in an inline object parameter type', async () => {
+    const result = await analyzeCodebase({
+      targetDir: fixturesDir,
+      specificFiles: [path.join(fixturesDir, 'src/inline-param-type-usage.ts')],
+    });
+
+    const typeNames = result.violations.map(v => v.typeName);
+    expect(typeNames).not.toContain('OrderAndLineItemResult');
+  });
+
   it('defaults to target directory itself when no sourceDir and no src/ exists', async () => {
     const result = await analyzeCodebase({
       targetDir: fixturesNoSrcDir,

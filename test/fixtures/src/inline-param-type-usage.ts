@@ -1,3 +1,4 @@
+// @ts-nocheck
 interface OrderAndLineItemResult {
   orderId: string;
   lineItemId: string;
